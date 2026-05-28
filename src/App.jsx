@@ -36,9 +36,24 @@ function genRef() {
 }
 function fmtDate(s){ return s ? new Date(s).toLocaleDateString("en-KE",{day:"2-digit",month:"short",year:"numeric"}) : "—"; }
 
+// ── DEEP LINK: read hash on load ─────────────────────────
+function getInitialPortal() {
+  const hash = window.location.hash.replace('#','').toLowerCase();
+  if (hash === 'provider') return 'provider';
+  if (hash === 'provider-home') return 'provider-home';
+  if (hash === 'sha') return 'sha';
+  return 'home';
+}
+
 export default function App() {
-  const [portal, setPortal] = useState("home");
+  const [portal, setPortal] = useState(getInitialPortal);
   const [issues, setIssues] = useState([]);
+
+  // Update hash when portal changes
+  useEffect(() => {
+    if (portal === 'home') window.location.hash = '';
+    else window.location.hash = portal;
+  }, [portal]);
 
   useEffect(() => {
     loadIssues();
@@ -61,14 +76,42 @@ export default function App() {
   const updateIssue = async (id, updates) => {
     const issue = issues.find(i => i.id === id);
     if (!issue) return;
-    const merged = { ...issue, ...updates };
-    await supabase.from(TABLE).update({ data: merged }).eq("id", id);
+    await supabase.from(TABLE).update({ data: { ...issue, ...updates } }).eq("id", id);
     await loadIssues();
   };
 
-  if (portal==="home")     return <Home onSelect={setPortal}/>;
-  if (portal==="provider") return <ProviderPortal issues={issues} saveIssue={saveIssue} onBack={()=>setPortal("home")}/>;
-  if (portal==="sha")      return <SHAPortal issues={issues} updateIssue={updateIssue} onBack={()=>setPortal("home")}/>;
+  if (portal==="home")          return <Home onSelect={setPortal}/>;
+  if (portal==="provider-home") return <ProviderHome onSelect={setPortal}/>;
+  if (portal==="provider")      return <ProviderPortal issues={issues} saveIssue={saveIssue} onBack={()=>setPortal("provider-home")}/>;
+  if (portal==="sha")           return <SHAPortal issues={issues} updateIssue={updateIssue} onBack={()=>setPortal("home")}/>;
+}
+
+/* ── PROVIDER-ONLY LANDING ─────────────────────────────── */
+function ProviderHome({onSelect}) {
+  return (
+    <div style={{minHeight:"100vh",background:"#0B1F3A",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',Arial,sans-serif",padding:24}}>
+      <style>{`@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}} @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}} .pcard2{transition:transform 0.2s,box-shadow 0.2s;cursor:pointer} .pcard2:hover{transform:translateY(-6px);box-shadow:0 20px 40px rgba(0,0,0,0.3)}`}</style>
+      <div style={{animation:"float 4s ease-in-out infinite",fontSize:56,marginBottom:16}}>🏥</div>
+      <div style={{textAlign:"center",marginBottom:48,animation:"fadeUp 0.5s ease"}}>
+        <div style={{fontSize:26,fontWeight:800,color:"#fff",letterSpacing:-0.5,lineHeight:1.2}}>Health Care Provider</div>
+        <div style={{fontSize:26,fontWeight:800,color:"#28AAE6",letterSpacing:-0.5,lineHeight:1.2}}>Customer Service Portal</div>
+        <div style={{fontSize:14,color:"rgba(255,255,255,0.45)",marginTop:8}}>Social Health Authority · Provider Management Department</div>
+        <div style={{fontSize:13,color:"#28AAE6",marginTop:4,fontStyle:"italic"}}>Bima Bora, Afya Nyumbani</div>
+      </div>
+      <div style={{animation:"fadeUp 0.5s 0.15s ease both"}}>
+        <div className="pcard2" onClick={()=>onSelect("provider")} style={{background:"#fff",borderRadius:20,padding:"48px 48px",width:300,textAlign:"center",boxShadow:"0 16px 48px rgba(0,0,0,0.25)"}}>
+          <div style={{fontSize:52,marginBottom:20}}>🏨</div>
+          <div style={{fontSize:22,fontWeight:800,color:"#0B1F3A",marginBottom:10}}>Healthcare Provider</div>
+          <div style={{fontSize:14,color:"#6B7280",lineHeight:1.7,marginBottom:28}}>Submit a provider issue or track the status of your existing submissions</div>
+          <div style={{background:"#0050A0",color:"#fff",padding:"14px 28px",borderRadius:12,fontSize:14,fontWeight:700}}>Enter Provider Portal →</div>
+        </div>
+      </div>
+      <div style={{marginTop:40,textAlign:"center"}}>
+        <div style={{fontSize:11,color:"rgba(255,255,255,0.2)"}}>SHA Kenya © 2025 · Secure</div>
+        <div style={{fontSize:12,color:"#28AAE6",marginTop:6}}>📧 providermanagement@sha.go.ke</div>
+      </div>
+    </div>
+  );
 }
 
 /* ── HOME ──────────────────────────────────────────────── */
@@ -152,14 +195,13 @@ function ProviderPortal({issues,saveIssue,onBack}) {
   return (
     <div style={{minHeight:"100vh",background:"#F1F5F9",fontFamily:"'Segoe UI',Arial,sans-serif"}}>
       <style>{`input:focus,select:focus,textarea:focus{outline:2px solid ${SHA_BLUE}!important;outline-offset:1px} @keyframes pop{from{transform:scale(0.85);opacity:0}to{transform:scale(1);opacity:1}}`}</style>
-      {/* Header */}
       <div style={{background:"#fff",borderBottom:"1px solid #E5E7EB",padding:"14px 28px",display:"flex",alignItems:"center",gap:14,position:"sticky",top:0,zIndex:50}}>
         <button onClick={onBack} style={{border:"none",background:"#F3F4F6",cursor:"pointer",color:"#374151",fontSize:12,fontWeight:700,padding:"6px 12px",borderRadius:8,fontFamily:"inherit"}}>← Back</button>
         <div style={{width:1,height:24,background:"#E5E7EB"}}/>
         <div style={{width:36,height:36,borderRadius:10,background:SHA_BLUE,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>🏥</div>
         <div>
-          <div style={{fontWeight:800,fontSize:16,color:SHA_BLUE_D}}>SHA Provider Portal</div>
-          <div style={{fontSize:11,color:"#9CA3AF"}}>Submit & Track Your Issues</div>
+          <div style={{fontWeight:800,fontSize:15,color:SHA_BLUE_D}}>Health Care Provider Customer Service Portal</div>
+          <div style={{fontSize:11,color:"#9CA3AF"}}>providermanagement@sha.go.ke</div>
         </div>
         <div style={{marginLeft:"auto",display:"flex",gap:4}}>
           {[{l:"Submit Issue",v:"form"},{l:"Track My Issue",v:"track"}].map(t=>(
@@ -171,8 +213,6 @@ function ProviderPortal({issues,saveIssue,onBack}) {
       </div>
 
       <div style={{maxWidth:700,margin:"0 auto",padding:"28px 20px"}}>
-
-        {/* SUCCESS */}
         {view==="success" && (
           <div style={{background:"#fff",borderRadius:20,padding:48,textAlign:"center",boxShadow:"0 4px 24px rgba(0,0,0,0.07)",animation:"pop 0.4s cubic-bezier(.34,1.56,.64,1)"}}>
             <div style={{fontSize:64,marginBottom:16}}>✅</div>
@@ -190,7 +230,6 @@ function ProviderPortal({issues,saveIssue,onBack}) {
           </div>
         )}
 
-        {/* SUBMIT FORM */}
         {view==="form" && (
           <div>
             <div style={{background:`linear-gradient(135deg,${SHA_BLUE},${SHA_BLUE_D})`,borderRadius:14,padding:"22px 26px",marginBottom:20,color:"#fff"}}>
@@ -234,8 +273,8 @@ function ProviderPortal({issues,saveIssue,onBack}) {
               <ProvSection label="📝 Issue Details"/>
               <PField label="Description of Issue" k="description" required errors={errors}>
                 <textarea value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))}
-                  placeholder="Describe your issue in detail — include relevant background and what outcome you need…"
-                  rows={4} style={{...inp("description"),resize:"vertical"}}/>
+                  placeholder="Describe your issue in detail…" rows={4}
+                  style={{...inp("description"),resize:"vertical"}}/>
               </PField>
               <button onClick={handleSubmit} disabled={submitting} style={{width:"100%",background:SHA_BLUE,color:"#fff",border:"none",padding:"13px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:8,opacity:submitting?0.7:1}}>
                 {submitting ? "Submitting…" : "Submit Issue →"}
@@ -244,7 +283,6 @@ function ProviderPortal({issues,saveIssue,onBack}) {
           </div>
         )}
 
-        {/* TRACK */}
         {view==="track" && (
           <div>
             <div style={{background:"#fff",borderRadius:14,padding:26,boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:16}}>
@@ -313,7 +351,6 @@ function SHAPortal({issues,updateIssue,onBack}) {
   const [search,setSearch]   = useState("");
   const [toast,setToast]     = useState(null);
   const [saving,setSaving]   = useState(false);
-
   const [editStatus,setEditStatus]   = useState("");
   const [editAssigned,setEditAssigned] = useState("");
   const [editNote,setEditNote]       = useState("");
@@ -336,8 +373,7 @@ function SHAPortal({issues,updateIssue,onBack}) {
   };
 
   const filtered = useMemo(()=>issues.filter(i=>
-    (fStatus==="All"||i.status===fStatus)&&
-    (fCounty==="All"||i.county===fCounty)&&
+    (fStatus==="All"||i.status===fStatus)&&(fCounty==="All"||i.county===fCounty)&&
     (fType==="All"||i.issueType===fType)&&
     (!search||i.facilityName?.toLowerCase().includes(search.toLowerCase())||i.refNo?.toLowerCase().includes(search.toLowerCase()))
   ),[issues,fStatus,fCounty,fType,search]);
@@ -355,12 +391,17 @@ function SHAPortal({issues,updateIssue,onBack}) {
         <div style={{fontSize:48,marginBottom:14}}>🔐</div>
         <div style={{fontWeight:800,fontSize:20,color:SHA_BLUE_D,marginBottom:4}}>SHA Staff Access</div>
         <div style={{fontSize:13,color:"#9CA3AF",marginBottom:28}}>Internal use only. Enter your department PIN.</div>
-        <input type="password" value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={e=>e.key==="Enter"&&(pin===SHA_PIN?setAuthed(true):setPinErr("Incorrect PIN."))}
-          placeholder="Enter PIN" style={{width:"100%",padding:"12px",border:`1.5px solid ${pinErr?"#EF4444":"#E5E7EB"}`,borderRadius:10,fontSize:18,textAlign:"center",letterSpacing:8,marginBottom:8,fontFamily:"monospace",color:"#111827",boxSizing:"border-box",outline:"none"}}/>
+        <input type="password" value={pin} onChange={e=>setPin(e.target.value)}
+          onKeyDown={e=>e.key==="Enter"&&(pin===SHA_PIN?setAuthed(true):setPinErr("Incorrect PIN."))}
+          placeholder="Enter PIN"
+          style={{width:"100%",padding:"12px",border:`1.5px solid ${pinErr?"#EF4444":"#E5E7EB"}`,borderRadius:10,fontSize:18,textAlign:"center",letterSpacing:8,marginBottom:8,fontFamily:"monospace",color:"#111827",boxSizing:"border-box",outline:"none"}}/>
         {pinErr && <div style={{color:"#EF4444",fontSize:12,marginBottom:10}}>{pinErr}</div>}
-        <button onClick={()=>{pin===SHA_PIN?setAuthed(true):setPinErr("Incorrect PIN.");}} style={{width:"100%",background:SHA_BLUE,color:"#fff",border:"none",padding:"13px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:10}}>Access Dashboard</button>
+        <button onClick={()=>{pin===SHA_PIN?setAuthed(true):setPinErr("Incorrect PIN.");}}
+          style={{width:"100%",background:SHA_BLUE,color:"#fff",border:"none",padding:"13px",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:10}}>
+          Access Dashboard
+        </button>
         <button onClick={onBack} style={{background:"none",border:"none",color:"#9CA3AF",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>← Back to Home</button>
-        <div style={{marginTop:16,fontSize:11,color:"#D1D5DB"}}>Demo PIN: SHA2025</div>
+        <div style={{marginTop:16,fontSize:11,color:"#D1D5DB"}}>Staff PIN: SHA2025</div>
       </div>
     </div>
   );
@@ -369,8 +410,6 @@ function SHAPortal({issues,updateIssue,onBack}) {
     <div style={{minHeight:"100vh",background:"#F1F5F9",fontFamily:"'Segoe UI',Arial,sans-serif"}}>
       <style>{`@keyframes slideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}} input:focus,select:focus,textarea:focus{outline:2px solid ${SHA_BLUE}!important;outline-offset:1px}`}</style>
       {toast && <div style={{position:"fixed",top:14,right:14,zIndex:9999,background:SHA_GREEN,color:"#fff",padding:"11px 20px",borderRadius:10,fontWeight:700,fontSize:13,boxShadow:"0 4px 16px rgba(0,0,0,0.2)"}}>{toast}</div>}
-
-      {/* Header */}
       <div style={{background:SHA_BLUE,padding:"0 28px",position:"sticky",top:0,zIndex:50}}>
         <div style={{display:"flex",alignItems:"center",gap:14,paddingTop:14}}>
           <button onClick={onBack} style={{border:"none",background:"rgba(255,255,255,0.1)",cursor:"pointer",color:"rgba(255,255,255,0.7)",fontSize:12,fontWeight:700,padding:"6px 12px",borderRadius:8,fontFamily:"inherit"}}>← Home</button>
@@ -399,8 +438,6 @@ function SHAPortal({issues,updateIssue,onBack}) {
       </div>
 
       <div style={{maxWidth:1280,margin:"0 auto",padding:"24px 20px"}}>
-
-        {/* DASHBOARD */}
         {tab==="dashboard" && (
           <div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
@@ -421,7 +458,8 @@ function SHAPortal({issues,updateIssue,onBack}) {
                 <button onClick={()=>setTab("issues")} style={{fontSize:12,color:SHA_BLUE,background:"none",border:"none",cursor:"pointer",fontWeight:700}}>View All →</button>
               </div>
               {issues.slice(0,8).map((issue,i)=>(
-                <div key={issue.id} onClick={()=>{setSelected(issue);setTab("issues");}} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 8px",borderRadius:10,cursor:"pointer",borderBottom:i<7?"1px solid #F3F4F6":"none",transition:"background 0.1s"}}
+                <div key={issue.id} onClick={()=>{setSelected(issue);setTab("issues");}}
+                  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 8px",borderRadius:10,cursor:"pointer",borderBottom:i<7?"1px solid #F3F4F6":"none"}}
                   onMouseEnter={e=>e.currentTarget.style.background="#F9FAFB"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                   <div style={{width:34,height:34,borderRadius:9,background:STATUS_META[issue.status]?.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{STATUS_META[issue.status]?.icon}</div>
                   <div style={{flex:1,minWidth:0}}>
@@ -437,7 +475,6 @@ function SHAPortal({issues,updateIssue,onBack}) {
           </div>
         )}
 
-        {/* ALL ISSUES */}
         {tab==="issues" && (
           <div style={{display:"grid",gridTemplateColumns:selected?"1fr 400px":"1fr",gap:16}}>
             <div>
@@ -482,8 +519,6 @@ function SHAPortal({issues,updateIssue,onBack}) {
                 </div>
               </div>
             </div>
-
-            {/* Detail / Update Panel */}
             {selected && (
               <div style={{background:"#fff",borderRadius:14,padding:22,boxShadow:"0 4px 20px rgba(0,0,0,0.08)",position:"sticky",top:86,maxHeight:"calc(100vh-110px)",overflowY:"auto",animation:"slideIn 0.25s ease"}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
@@ -507,7 +542,6 @@ function SHAPortal({issues,updateIssue,onBack}) {
                   <div style={{fontSize:9,fontWeight:700,color:"#9CA3AF",letterSpacing:0.7,marginBottom:4}}>DESCRIPTION</div>
                   <div style={{fontSize:12,color:"#374151",lineHeight:1.6}}>{selected.description||"—"}</div>
                 </div>
-                {/* Update Controls */}
                 <div style={{borderTop:"1px solid #F3F4F6",paddingTop:14,marginBottom:12}}>
                   <div style={{fontSize:11,fontWeight:700,color:"#374151",marginBottom:6}}>Update Status</div>
                   <select value={editStatus} onChange={e=>setEditStatus(e.target.value)} style={{width:"100%",padding:"9px 12px",border:`1.5px solid ${STATUS_META[editStatus]?.color}60`,borderRadius:8,fontSize:12,color:STATUS_META[editStatus]?.color,background:STATUS_META[editStatus]?.bg,fontWeight:700,fontFamily:"inherit",outline:"none"}}>
@@ -516,7 +550,7 @@ function SHAPortal({issues,updateIssue,onBack}) {
                 </div>
                 <div style={{marginBottom:12}}>
                   <div style={{fontSize:11,fontWeight:700,color:"#374151",marginBottom:6}}>Assigned To</div>
-                  <input value={editAssigned} onChange={e=>setEditAssigned(e.target.value)} placeholder="Officer name or initials" style={{width:"100%",padding:"9px 12px",border:"1.5px solid #E5E7EB",borderRadius:8,fontSize:12,color:"#111827",fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+                  <input value={editAssigned} onChange={e=>setEditAssigned(e.target.value)} placeholder="Officer name" style={{width:"100%",padding:"9px 12px",border:"1.5px solid #E5E7EB",borderRadius:8,fontSize:12,color:"#111827",fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
                 </div>
                 <div style={{marginBottom:14}}>
                   <div style={{fontSize:11,fontWeight:700,color:"#374151",marginBottom:6}}>Add Internal Note</div>
@@ -525,7 +559,6 @@ function SHAPortal({issues,updateIssue,onBack}) {
                 <button onClick={handleSave} disabled={saving} style={{width:"100%",background:SHA_BLUE,color:"#fff",border:"none",padding:"11px",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:16,opacity:saving?0.7:1}}>
                   {saving?"Saving…":"💾 Save Changes"}
                 </button>
-                {/* History */}
                 <div style={{borderTop:"1px solid #F3F4F6",paddingTop:12}}>
                   <div style={{fontSize:10,fontWeight:700,color:"#9CA3AF",letterSpacing:0.8,marginBottom:10}}>ACTIVITY LOG</div>
                   {(selected.history||[]).slice().reverse().map((h,i)=>(
@@ -543,7 +576,6 @@ function SHAPortal({issues,updateIssue,onBack}) {
           </div>
         )}
 
-        {/* ANALYTICS */}
         {tab==="analytics" && (
           <div style={{display:"flex",flexDirection:"column",gap:20}}>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
